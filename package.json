@@ -1,0 +1,20 @@
+{
+  "name": "frosted-glass-sticky-notes",
+  "version": "1.0.0",
+  "description": "Aesthetic frosted glass sticky notes with prismatic light refraction and JSON auto-save",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "sticky-notes",
+    "frosted-glass",
+    "acrylic",
+    "glassmorphism"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.4.5"
+  }
+}

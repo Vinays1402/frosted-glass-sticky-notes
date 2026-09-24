@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liquid Glass Sticky Notes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-crystal">
+
+  <!-- SVG Filter for Liquid Glass Polymorphism (AetherCSS Reference) -->
+  <svg width="0" height="0" style="position: absolute; pointer-events: none;" aria-hidden="true">
+    <defs>
+      <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence 
+          type="fractalNoise" 
+          baseFrequency="0.025 0.025"
+          numOctaves="2" 
+          seed="92" 
+          result="noise" 
+        />
+        <feGaussianBlur 
+          in="noise" 
+          stdDeviation="2" 
+          result="blurred" 
+        />
+        <feDisplacementMap 
+          id="svgDisplacement"
+          in="SourceGraphic" 
+          in2="blurred" 
+          scale="40"
+          xChannelSelector="R" 
+          yChannelSelector="G" 
+        />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Transparent Viewport Root -->
+  <div class="deck-viewport" id="deckViewport">
+
+    <!-- 1. STACK STAGE (3D Deck View) -->
+    <div class="cards-stage" id="cardsStage">
+      <!-- Dynamic stacked cards rendered here -->
+    </div>
+
+    <!-- Tactile 3D Glass Roller Control for Stacked Cards -->
+    <div class="glass-roller-control" id="stackRoller">
+      <button class="roller-arrow-btn up" id="btnRollerUp" title="Previous Card">▲</button>
+      <div class="roller-cylinder" id="rollerCylinder" title="Scroll wheel / drag to flip cards">
+        <div class="roller-ribs" id="rollerRibs">
+          <div class="rib"></div>
+          <div class="rib"></div>
+          <div class="rib"></div>
+          <div class="rib"></div>
+          <div class="rib"></div>
+          <div class="rib"></div>
+          <div class="rib"></div>
+        </div>
+      </div>
+      <button class="roller-arrow-btn down" id="btnRollerDown" title="Next Card">▼</button>
+      
+      <!-- Roller Badge showing current card title and index -->
+      <div class="roller-badge" id="rollerBadge">
+        <span class="roller-badge-dot"></span>
+        <span class="roller-index" id="rollerIndex">1 / 1</span>
+        <span class="roller-card-title" id="rollerTitle">New Note</span>
+      </div>
+    </div>
+
+    <!-- 2. SPREAD LAYOUT (Category Sidebar, Toolbar & Interactive Draggable Cards) -->
+    <div class="spread-layout-container" id="spreadLayout">
+      <!-- Left Category Sidebar -->
+      <aside class="spread-sidebar" id="spreadSidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Categories</span>
+          <button class="sidebar-add-btn" id="btnAddCategory" title="New Category">+</button>
+        </div>
+        <div class="categories-list" id="categoriesList">
+          <!-- Dynamic category pills -->
+        </div>
+      </aside>
+
+      <!-- Spread Content Area -->
+      <main class="spread-main">
+        <!-- Top Action / Sort Bar -->
+        <header class="spread-toolbar">
+          <div class="toolbar-left">
+            <div class="category-active-label" id="currentCategoryLabel">All Notes</div>
+            <div class="selection-pill" id="selectionPill" style="display: none;">
+              <span id="selectedCountText">0 selected</span>
+              <button class="btn-select-all" id="btnSelectAll">Select All</button>
+            </div>
+          </div>
+
+          <div class="toolbar-right">
+            <!-- Add Note inside spread -->
+            <button class="spread-tool-btn" id="btnSpreadNewNote" title="Create New Note in this category">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>New Note</span>
+            </button>
+
+            <!-- Snap / Reset Layout -->
+            <button class="spread-tool-btn" id="btnSnapGrid" title="Align Cards to Grid">
+              <span>Grid Align</span>
+            </button>
+
+            <!-- Sort dropdown -->
+            <div class="sort-wrap">
+              <select class="glass-select" id="sortSelect">
+                <option value="newest">🕒 Newest First</option>
+                <option value="oldest">🕒 Oldest First</option>
+                <option value="title">🔤 Title (A-Z)</option>
+              </select>
+            </div>
+
+            <!-- Delete Selected Button -->
+            <button class="spread-tool-btn danger" id="btnDeleteSelected" style="display: none;" title="Delete Selected Notes">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span>Delete (<span id="deleteSelectedBadge">0</span>)</span>
+            </button>
+
+            <!-- Close Spread / Return to Stack -->
+            <button class="spread-tool-btn primary" id="btnCloseSpread" title="Stack Deck">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+              <span>Stack Deck</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Interactive Canvas / Grid for Multiple Simultaneously Usable Cards -->
+        <div class="spread-cards-canvas" id="spreadCardsGrid">
+          <!-- Usable, draggable, pop-out cards rendered here -->
+        </div>
+      </main>
+    </div>
+
+    <!-- Scoped Delete Confirmation Box (NO full-window dark band!) -->
+    <div class="scoped-delete-popup" id="deletePopup">
+      <div class="delete-glass-card">
+        <div class="popup-title" id="deletePopupTitle">Delete Note?</div>
+        <div class="popup-subtitle" id="deletePopupSubtitle">This action cannot be undone.</div>
+        <div class="popup-actions">
+          <button class="popup-btn cancel" id="btnCancelDelete">Cancel</button>
+          <button class="popup-btn danger" id="btnConfirmDelete">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynamic Control Center (Mounted only when Settings is open, destroyed on close) -->
+    <div class="settings-overlay-host" id="settingsHost"></div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

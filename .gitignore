@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Logs & temp debug output
+logs/
+src/logs/
+*.log
+debug_log.txt
+run_out.txt
+
+# Local User Window Coordinates
+window_state.json
+
+# OS files
+.DS_Store
+Thumbs.db
