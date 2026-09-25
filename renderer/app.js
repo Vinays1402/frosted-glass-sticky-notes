@@ -1,6 +1,6 @@
 // ==========================================================================
 // LIQUID GLASS POLYMORPHIC STICKY NOTES - APP CONTROLLER
-// Flipped hover fanning, 3s opacity morph layer, Spread View (Categories, Multi-select, Sort)
+// Flipped hover fanning, 3s opacity morph layer, Spread View (Categories, Drag-to-Collection, Multi-window Detach)
 // ==========================================================================
 
 // Centralized Issue Logger
@@ -15,6 +15,11 @@ window.onunhandledrejection = function (event) {
     window.api.logIssue('ERROR', `Renderer Promise Rejection: ${reason ? reason.message || reason : 'Unknown'}`, reason ? reason.stack : '');
   }
 };
+
+// URL Parameters for Multi-Window Mode
+const urlParams = new URLSearchParams(window.location.search);
+const isStandalone = urlParams.get('mode') === 'standalone';
+const standaloneNoteId = urlParams.get('noteId');
 
 let notes = [];
 let activeNoteId = null;
@@ -31,6 +36,7 @@ let activeCategory = 'All Notes';
 let selectedNoteIds = new Set();
 let currentSort = 'newest';
 let draggedNoteId = null;
+let highestSpreadZ = 30;
 
 // Settings state
 let userSettings = {
@@ -61,11 +67,11 @@ const currentCategoryLabel = document.getElementById('currentCategoryLabel');
 const selectionPill = document.getElementById('selectionPill');
 const selectedCountText = document.getElementById('selectedCountText');
 const btnSelectAll = document.getElementById('btnSelectAll');
-const sortSelect = document.getElementById('sortSelect');
 const btnDeleteSelected = document.getElementById('btnDeleteSelected');
 const deleteSelectedBadge = document.getElementById('deleteSelectedBadge');
 const btnCloseSpread = document.getElementById('btnCloseSpread');
 const spreadCardsGrid = document.getElementById('spreadCardsGrid');
+const categoryToast = document.getElementById('categoryToast');
 
 const deletePopup = document.getElementById('deletePopup');
 const deletePopupTitle = document.getElementById('deletePopupTitle');
@@ -104,7 +110,9 @@ const SVGS = {
   todo: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`,
   clock: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
   palette: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2C6.5 2 2 6.5 2 12c0 3.6 2 6.7 5 8.3 0 0 1.5-.7 1.5-2 0-1.1-.9-2-2-2-1.1 0-2-.9-2-2 0-3.3 2.7-6 6-6s6 2.7 6 6c0 1.1-.9 2-2 2-1.1 0-2 .9-2 2 0 1.3 1.5 2 1.5 2 3-1.6 5-4.7 5-8.3 0-5.5-4.5-10-10-10z"></path></svg>`,
-  trash: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`
+  trash: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
+  popout: `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
+  dock: `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></svg>`
 };
 
 // 1. APPLY USER CSS SETTINGS
@@ -121,6 +129,13 @@ function applyCssSettings() {
 // 2. INITIALIZE APP
 async function initApp() {
   applyCssSettings();
+
+  if (isStandalone) {
+    document.body.classList.add('mode-standalone');
+    if (stackRoller) stackRoller.style.display = 'none';
+    if (spreadLayout) spreadLayout.style.display = 'none';
+  }
+
   try {
     const wState = await window.api.getWindowState();
     if (wState && typeof wState.isPinned === 'boolean') {
@@ -142,9 +157,10 @@ async function initApp() {
         title: 'Liquid Glass Note',
         content: `<div>Welcome to your <b>liquid glass polymorphic</b> notes!</div>
 <br>
-<div>• <b>Rich Frosted Finish</b>: High optical density keeps text legible over any background.</div>
+<div>• <b>Rich Frosted Finish</b>: High optical density keeps text completely legible over any background.</div>
 <div>• <b>3-Second Opacity Morph</b>: Tap the droplet button to watch the liquid glass solidify into a block over 3 seconds.</div>
-<div>• <b>Spread & Categories</b>: Tap the grid button to sort, select, and filter your notes by category.</div>
+<div>• <b>Spread & Drag to Collection</b>: Drag any card to sidebar collections to organize instantly.</div>
+<div>• <b>Pop Out to Desktop</b>: Tap ↗ to float any note as an independent desktop instance while keeping the collection open.</div>
 <br>
 <div class="todo-item"><input type="checkbox" class="todo-check" checked><span class="todo-text checked">Polymorphic liquid glass finish</span></div>
 <div class="todo-item"><input type="checkbox" class="todo-check"><span class="todo-text">Ultra-low CPU & memory footprint</span></div>`,
@@ -164,19 +180,262 @@ async function initApp() {
     }
   });
 
-  activeNoteId = notes[0].id;
-  renderDeck();
-  applyTheme(notes[0].theme || 'crystal');
+  // Multi-window live synchronization handlers
+  if (window.api && window.api.onNotesSynced) {
+    window.api.onNotesSynced((syncedNotes) => {
+      notes = syncedNotes;
+      if (isStandalone) {
+        renderStandaloneView(false);
+      } else if (isSpreadMode) {
+        renderSpreadView();
+      } else {
+        renderDeck();
+      }
+    });
+  }
+
+  if (window.api && window.api.onNotePoppedOut) {
+    window.api.onNotePoppedOut(() => {
+      if (isSpreadMode) renderSpreadView();
+    });
+  }
+
+  if (window.api && window.api.onNoteDocked) {
+    window.api.onNoteDocked(() => {
+      if (isSpreadMode) renderSpreadView();
+    });
+  }
+
+  if (isStandalone) {
+    renderStandaloneView(true);
+  } else {
+    activeNoteId = notes[0].id;
+    renderDeck();
+    applyTheme(notes[0].theme || 'crystal');
+  }
 }
 
-// Get notes filtered by active category
+// Toast Notification Helper
+function showCategoryToast(message) {
+  const toast = document.getElementById('categoryToast');
+  if (!toast) return;
+  toast.innerHTML = `<span style="color: var(--gem-accent); font-weight: bold;">✓</span> <span>${escapeHtml(message)}</span>`;
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2200);
+}
+
+// Get notes filtered by active category (NEVER mutates master array)
 function getFilteredNotes() {
-  if (activeCategory === 'All Notes') return notes;
+  if (activeCategory === 'All Notes') return [...notes];
   return notes.filter(n => (n.category || 'General') === activeCategory);
 }
 
-// 3. RENDER 3D STACKED DECK
+// --------------------------------------------------------------------------
+// 3. STANDALONE DETACHED WINDOW RENDERER
+// --------------------------------------------------------------------------
+function renderStandaloneView(initialLoad = true) {
+  cardsStage.innerHTML = '';
+  const note = notes.find(n => n.id === standaloneNoteId);
+  if (!note) {
+    cardsStage.innerHTML = `
+      <div class="liquid-glass-card depth-0" style="display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px;">
+        <div>Note has been closed or removed.</div>
+      </div>
+    `;
+    return;
+  }
+
+  applyTheme(note.theme || 'crystal');
+
+  const cardEl = document.createElement('div');
+  cardEl.className = `liquid-glass-card depth-0 ${isOpaqueBlock ? 'opaque-block-mode' : ''}`;
+  cardEl.dataset.id = note.id;
+
+  cardEl.innerHTML = `
+    <!-- Dedicated 3-Second Frosted Opaque Block Crossfade Layer -->
+    <div class="glass-opaque-block-layer"></div>
+
+    <div class="card-content">
+      <!-- Minimalist Card Header -->
+      <div class="card-header">
+        <input type="text" class="card-title-input" value="${escapeHtml(note.title || 'Untitled')}" placeholder="Title..." />
+        
+        <div class="card-actions">
+          <!-- Dock back to collection -->
+          <button class="vec-btn btn-dock-card" title="Dock back into collection window">${SVGS.dock}</button>
+
+          <!-- 3-Second Opacity Shift Toggle -->
+          <button class="vec-btn btn-opacity-toggle ${isOpaqueBlock ? 'active' : ''}" title="Toggle Frosted Opacity (3s Transition)">${SVGS.drop}</button>
+
+          <!-- Pin Across Desktops -->
+          <button class="vec-btn btn-pin-card ${isPinned ? 'active' : ''}" title="Pin Across Desktops">${SVGS.pin}</button>
+
+          <!-- Minimize -->
+          <button class="vec-btn btn-min-card" title="Minimize">${SVGS.minimize}</button>
+
+          <!-- Close / Hide -->
+          <button class="vec-btn btn-close-card danger" title="Close Window">${SVGS.close}</button>
+        </div>
+      </div>
+
+      <!-- Minimalist Vector Formatting Row -->
+      <div class="card-format-row ${userSettings.showFormatBar ? '' : 'hidden-by-settings'}">
+        <div class="format-left">
+          <button class="fmt-icon-btn btn-bold" title="Bold (Ctrl+B)">${SVGS.bold}</button>
+          <button class="fmt-icon-btn btn-underline" title="Underline (Ctrl+U)">${SVGS.underline}</button>
+          <button class="fmt-icon-btn btn-italic" title="Italic (Ctrl+I)">${SVGS.italic}</button>
+          <button class="fmt-icon-btn btn-strike" title="Strikethrough">${SVGS.strike}</button>
+          <div class="fmt-divider"></div>
+          <button class="fmt-icon-btn btn-list" title="Bullet List">${SVGS.list}</button>
+          <button class="fmt-icon-btn btn-todo ${userSettings.showTodo ? '' : 'hidden-by-settings'}" title="Checkbox">${SVGS.todo}</button>
+          <button class="fmt-icon-btn btn-time ${userSettings.showTime ? '' : 'hidden-by-settings'}" title="Timestamp">${SVGS.clock}</button>
+        </div>
+
+        <div class="format-right">
+          <!-- Palette Popover -->
+          <div class="palette-popover-wrapper ${userSettings.showPalette ? '' : 'hidden-by-settings'}">
+            <button class="fmt-icon-btn btn-palette" title="Liquid Tint">${SVGS.palette}</button>
+            <div class="palette-dropdown">
+              <div class="palette-item" data-theme="crystal"><span class="color-dot crystal"></span> Ice</div>
+              <div class="palette-item" data-theme="amethyst"><span class="color-dot amethyst"></span> Amethyst</div>
+              <div class="palette-item" data-theme="teal"><span class="color-dot teal"></span> Teal</div>
+              <div class="palette-item" data-theme="amber"><span class="color-dot amber"></span> Amber</div>
+              <div class="palette-item" data-theme="rose"><span class="color-dot rose"></span> Rose</div>
+              <div class="palette-item" data-theme="emerald"><span class="color-dot emerald"></span> Jade</div>
+              <div class="palette-item" data-theme="obsidian"><span class="color-dot obsidian"></span> Obsidian</div>
+            </div>
+          </div>
+
+          <!-- Delete Note Button -->
+          <button class="fmt-icon-btn danger btn-trash" title="Delete Note">${SVGS.trash}</button>
+          <div class="save-dot-status" title="Auto-saved to JSON"></div>
+        </div>
+      </div>
+
+      <!-- Card Note Body -->
+      <div class="card-body-editor" contenteditable="true" placeholder="Start typing your note here...">${note.content || ''}</div>
+    </div>
+  `;
+
+  // Standalone Event Listeners
+  const titleInput = cardEl.querySelector('.card-title-input');
+  const bodyEditor = cardEl.querySelector('.card-body-editor');
+
+  titleInput.addEventListener('input', () => {
+    note.title = titleInput.value;
+    triggerSave();
+  });
+
+  bodyEditor.addEventListener('input', () => {
+    note.content = bodyEditor.innerHTML;
+    triggerSave();
+  });
+
+  bodyEditor.addEventListener('change', (e) => {
+    if (e.target.classList.contains('todo-check')) {
+      const span = e.target.nextElementSibling;
+      if (span) span.classList.toggle('checked', e.target.checked);
+      note.content = bodyEditor.innerHTML;
+      triggerSave();
+    }
+  });
+
+  // Dock button -> closes standalone and docks back into collection
+  cardEl.querySelector('.btn-dock-card').addEventListener('click', async () => {
+    await window.api.dockNote(note.id);
+  });
+
+  // 3-SECOND SMOOTH OPACITY TRANSITION
+  cardEl.querySelector('.btn-opacity-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    isOpaqueBlock = !isOpaqueBlock;
+    cardEl.classList.toggle('opaque-block-mode', isOpaqueBlock);
+    cardEl.querySelector('.btn-opacity-toggle').classList.toggle('active', isOpaqueBlock);
+  });
+
+  cardEl.querySelector('.btn-pin-card').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    isPinned = !isPinned;
+    cardEl.querySelector('.btn-pin-card').classList.toggle('active', isPinned);
+    await window.api.togglePin(null, isPinned);
+  });
+
+  cardEl.querySelector('.btn-min-card').addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.api.minimizeWindow();
+  });
+
+  cardEl.querySelector('.btn-close-card').addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.api.closeWindow();
+  });
+
+  // Formatting
+  cardEl.querySelector('.btn-bold')?.addEventListener('click', () => formatText('bold'));
+  cardEl.querySelector('.btn-underline')?.addEventListener('click', () => formatText('underline'));
+  cardEl.querySelector('.btn-italic')?.addEventListener('click', () => formatText('italic'));
+  cardEl.querySelector('.btn-strike')?.addEventListener('click', () => formatText('strikeThrough'));
+  cardEl.querySelector('.btn-list')?.addEventListener('click', () => formatText('insertUnorderedList'));
+  cardEl.querySelector('.btn-todo')?.addEventListener('click', () => {
+    bodyEditor.focus();
+    document.execCommand('insertHTML', false, `<div class="todo-item"><input type="checkbox" class="todo-check"><span class="todo-text">Task item</span></div>&nbsp;`);
+    note.content = bodyEditor.innerHTML;
+    triggerSave();
+  });
+  cardEl.querySelector('.btn-time')?.addEventListener('click', () => {
+    bodyEditor.focus();
+    const now = new Date();
+    const str = `<b>[${now.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</b>&nbsp;`;
+    document.execCommand('insertHTML', false, str);
+    note.content = bodyEditor.innerHTML;
+    triggerSave();
+  });
+
+  // Palette
+  const paletteBtn = cardEl.querySelector('.btn-palette');
+  const paletteDropdown = cardEl.querySelector('.palette-dropdown');
+  if (paletteBtn && paletteDropdown) {
+    paletteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      paletteDropdown.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!paletteDropdown.contains(e.target) && e.target !== paletteBtn) {
+        paletteDropdown.classList.remove('show');
+      }
+    });
+
+    paletteDropdown.querySelectorAll('.palette-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const t = item.dataset.theme;
+        applyTheme(t);
+        paletteDropdown.classList.remove('show');
+      });
+    });
+  }
+
+  // Trash
+  cardEl.querySelector('.btn-trash').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    notes = notes.filter(n => n.id !== note.id);
+    await window.api.saveAllNotes(notes);
+    window.api.closeWindow();
+  });
+
+  cardsStage.appendChild(cardEl);
+}
+
+// --------------------------------------------------------------------------
+// 4. RENDER 3D STACKED DECK (NO ARRAY MUTATION, STABLE ORDER)
+// --------------------------------------------------------------------------
 function renderDeck(slideInNew = false) {
+  if (isStandalone) {
+    renderStandaloneView(false);
+    return;
+  }
   if (isSpreadMode) {
     renderSpreadView();
     return;
@@ -197,22 +456,30 @@ function renderDeck(slideInNew = false) {
     `;
     const btn = cardsStage.querySelector('.btn-new-card');
     if (btn) btn.addEventListener('click', () => addNewNote());
+    updateRollerUI();
     return;
   }
 
-  // Ensure active note is at top of filtered list
-  const activeIdx = filtered.findIndex(n => n.id === activeNoteId);
-  if (activeIdx !== -1) {
-    const activeNote = filtered.splice(activeIdx, 1)[0];
-    filtered.unshift(activeNote);
-  } else {
+  let activeIdx = filtered.findIndex(n => n.id === activeNoteId);
+  if (activeIdx === -1) {
+    activeIdx = 0;
     activeNoteId = filtered[0].id;
   }
 
-  filtered.forEach((note, index) => {
+  // Build the 3D stack cards in circular order starting from activeIdx
+  // Depth 0 is the front active note; depths 1, 2, 3 are fanned behind it
+  const maxStackDepth = Math.min(filtered.length, 4);
+  const stackCards = [];
+  for (let d = 0; d < maxStackDepth; d++) {
+    const noteIdx = (activeIdx + d) % filtered.length;
+    stackCards.push({ note: filtered[noteIdx], depth: d });
+  }
+
+  // Render in reverse depth order so depth-0 is physically on top in the DOM
+  stackCards.slice().reverse().forEach(({ note, depth }) => {
     const cardEl = document.createElement('div');
-    const isTop = index === 0;
-    cardEl.className = `liquid-glass-card depth-${Math.min(index, 3)} ${isTop && isOpaqueBlock ? 'opaque-block-mode' : ''} ${isTop && slideInNew ? 'slide-in' : ''}`;
+    const isTop = depth === 0;
+    cardEl.className = `liquid-glass-card depth-${depth} ${isTop && isOpaqueBlock ? 'opaque-block-mode' : ''} ${isTop && slideInNew ? 'slide-in' : ''}`;
     cardEl.dataset.id = note.id;
 
     const isActive = isTop;
@@ -302,6 +569,7 @@ function renderDeck(slideInNew = false) {
       if (note.id !== activeNoteId) {
         activeNoteId = note.id;
         applyTheme(note.theme || 'crystal');
+        updateRollerUI();
         renderDeck();
       }
     });
@@ -312,6 +580,7 @@ function renderDeck(slideInNew = false) {
 
       titleInput.addEventListener('input', () => {
         note.title = titleInput.value;
+        updateRollerUI();
         triggerSave();
       });
 
@@ -431,6 +700,7 @@ function renderDeck(slideInNew = false) {
 
     cardsStage.appendChild(cardEl);
   });
+
   updateRollerUI();
 }
 
@@ -445,7 +715,7 @@ function stripHtml(html) {
 }
 
 // --------------------------------------------------------------------------
-// TACTILE 3D ROLLER CONTROL CONTROLLER
+// 5. TACTILE 3D ROLLER CONTROL (ACCURATE TITLE & INDEX ON SCROLL)
 // --------------------------------------------------------------------------
 let rollerRibOffset = 0;
 let isRollerDragging = false;
@@ -454,14 +724,15 @@ let rollerScrollTimer = null;
 function updateRollerUI() {
   if (!stackRoller) return;
   const filtered = getFilteredNotes();
-  if (filtered.length === 0 || isSpreadMode) {
+  if (filtered.length === 0 || isSpreadMode || isStandalone) {
     stackRoller.style.display = 'none';
     return;
   }
   stackRoller.style.display = 'flex';
 
-  const activeIdx = Math.max(0, filtered.findIndex(n => n.id === activeNoteId));
-  const activeNote = filtered[activeIdx] || filtered[0];
+  let activeIdx = filtered.findIndex(n => n.id === activeNoteId);
+  if (activeIdx === -1) activeIdx = 0;
+  const activeNote = filtered[activeIdx];
 
   if (rollerIndex) {
     rollerIndex.textContent = `${activeIdx + 1} / ${filtered.length}`;
@@ -486,6 +757,9 @@ function stepStackedCard(dir) {
   if (rollerRibs) {
     rollerRibs.style.transform = `translateY(${-(rollerRibOffset % 32)}px)`;
   }
+
+  // Update roller badge and UI immediately
+  updateRollerUI();
 
   // Pop up the badge displaying card title and index
   if (stackRoller) {
@@ -553,7 +827,7 @@ if (rollerCylinder) {
 // Scroll wheel over cards stage also flips cards when not scrolling inside note body
 if (cardsStage) {
   cardsStage.addEventListener('wheel', (e) => {
-    if (isSpreadMode) return;
+    if (isSpreadMode || isStandalone) return;
     const editor = e.target.closest('.card-body-editor');
     if (editor && editor.scrollHeight > editor.clientHeight) {
       return;
@@ -563,9 +837,11 @@ if (cardsStage) {
   }, { passive: true });
 }
 
-// 4. APPLY THEME
+// --------------------------------------------------------------------------
+// 6. APPLY THEME
+// --------------------------------------------------------------------------
 function applyTheme(themeName) {
-  document.body.className = `theme-${themeName}`;
+  document.body.className = `${isStandalone ? 'mode-standalone ' : ''}theme-${themeName}`;
   const activeNote = notes.find(n => n.id === activeNoteId);
   if (activeNote) {
     activeNote.theme = themeName;
@@ -573,7 +849,9 @@ function applyTheme(themeName) {
   }
 }
 
-// 5. FORMAT TEXT
+// --------------------------------------------------------------------------
+// 7. FORMAT TEXT
+// --------------------------------------------------------------------------
 function formatText(cmd, val = null) {
   const activeEditor = document.querySelector('.liquid-glass-card.depth-0 .card-body-editor');
   if (activeEditor) {
@@ -587,13 +865,15 @@ function formatText(cmd, val = null) {
   }
 }
 
-// 6. ADD NEW NOTE (INITIAL THEME IS ALWAYS UNIFIED 'crystal')
+// --------------------------------------------------------------------------
+// 8. ADD NEW NOTE
+// --------------------------------------------------------------------------
 function addNewNote() {
   const newNote = {
     id: 'note-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
     title: 'New Note',
-    content: '<div>Start typing your note here...</div>',
-    theme: 'crystal', // All cards initially have the SAME colour
+    content: '',
+    theme: 'crystal',
     category: activeCategory === 'All Notes' ? 'General' : activeCategory,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -602,47 +882,49 @@ function addNewNote() {
   notes.unshift(newNote);
   activeNoteId = newNote.id;
   applyTheme('crystal');
-
-  if (isSpreadMode) {
-    renderSpreadView();
-  } else {
-    renderDeck(true);
-  }
+  renderDeck(true);
   triggerSave();
 
   setTimeout(() => {
-    const titleInp = document.querySelector('.liquid-glass-card.depth-0 .card-title-input');
-    if (titleInp) {
-      titleInp.focus();
-      titleInp.select();
+    const topTitle = document.querySelector('.liquid-glass-card.depth-0 .card-title-input');
+    if (topTitle) {
+      topTitle.focus();
+      topTitle.select();
     }
-  }, 120);
+  }, 150);
 }
 
-// 7. SPREAD / STACK TOGGLE
-function toggleSpread(forceState) {
-  isSpreadMode = typeof forceState === 'boolean' ? forceState : !isSpreadMode;
+// --------------------------------------------------------------------------
+// 9. SPREAD VIEW CONTROLLER (DRAG-TO-COLLECTION & POP-OUT INSTANCE)
+// --------------------------------------------------------------------------
+function toggleSpread(forceState = null) {
+  isSpreadMode = forceState !== null ? forceState : !isSpreadMode;
   deckViewport.classList.toggle('mode-spread', isSpreadMode);
-  window.api.setWindowMode(isSpreadMode ? 'spread' : 'stack');
-  selectedNoteIds.clear();
+  spreadLayout.style.display = isSpreadMode ? 'flex' : 'none';
 
   if (isSpreadMode) {
+    window.api.setWindowMode('spread');
     if (stackRoller) stackRoller.style.display = 'none';
     renderSpreadView();
   } else {
+    window.api.setWindowMode('stack');
     if (stackRoller) stackRoller.style.display = 'flex';
     renderDeck();
   }
 }
 
-// 8. RENDER SPREAD VIEW (SIMULTANEOUSLY USABLE & DRAGGABLE POP-OUT CARDS)
-let highestSpreadZ = 30;
-
-function renderSpreadView() {
+async function renderSpreadView() {
   currentCategoryLabel.textContent = activeCategory;
   if (stackRoller) stackRoller.style.display = 'none';
 
-  // Render Category Sidebar
+  // Fetch detached note IDs
+  let detachedSet = new Set();
+  try {
+    const detachedList = await window.api.getDetachedNotes();
+    if (Array.isArray(detachedList)) detachedSet = new Set(detachedList);
+  } catch (e) {}
+
+  // 1. Render Category Sidebar with Drag-and-Drop Drop Targets
   categoriesList.innerHTML = '';
   categories.forEach(cat => {
     const count = cat === 'All Notes' ? notes.length : notes.filter(n => (n.category || 'General') === cat).length;
@@ -652,10 +934,44 @@ function renderSpreadView() {
       <span>${escapeHtml(cat)}</span>
       <span class="category-count">${count}</span>
     `;
+
     pill.addEventListener('click', () => {
       activeCategory = cat;
       renderSpreadView();
     });
+
+    // DRAG & DROP INTO CATEGORY / COLLECTION
+    pill.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      pill.classList.add('drop-target-active');
+    });
+
+    pill.addEventListener('dragleave', (e) => {
+      if (!pill.contains(e.relatedTarget)) {
+        pill.classList.remove('drop-target-active');
+      }
+    });
+
+    pill.addEventListener('drop', (e) => {
+      e.preventDefault();
+      pill.classList.remove('drop-target-active');
+      const droppedId = e.dataTransfer.getData('text/plain') || draggedNoteId;
+      if (!droppedId) return;
+
+      const targetNote = notes.find(n => n.id === droppedId);
+      if (targetNote) {
+        const newCat = cat === 'All Notes' ? 'General' : cat;
+        if (targetNote.category !== newCat) {
+          targetNote.category = newCat;
+          targetNote.updatedAt = new Date().toISOString();
+          triggerSave();
+          showCategoryToast(`Moved "${targetNote.title || 'Untitled'}" to ${newCat}`);
+          renderSpreadView();
+        }
+      }
+    });
+
     categoriesList.appendChild(pill);
   });
 
@@ -671,16 +987,8 @@ function renderSpreadView() {
     btnDeleteSelected.style.display = 'none';
   }
 
-  // Get filtered and sorted notes
+  // Get filtered notes
   let list = getFilteredNotes().slice();
-  if (currentSort === 'newest') {
-    list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  } else if (currentSort === 'oldest') {
-    list.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
-  } else if (currentSort === 'title') {
-    list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-  }
-
   spreadCardsGrid.innerHTML = '';
 
   if (list.length === 0) {
@@ -699,9 +1007,11 @@ function renderSpreadView() {
     const cardEl = document.createElement('div');
     const isSelected = selectedNoteIds.has(note.id);
     const isPopped = note.spreadX !== undefined && note.spreadY !== undefined;
+    const isDetached = detachedSet.has(note.id);
 
-    cardEl.className = `spread-usable-card ${isSelected ? 'selected' : ''} ${isPopped ? 'popped-out' : ''}`;
+    cardEl.className = `spread-usable-card ${isSelected ? 'selected' : ''} ${isPopped ? 'popped-out' : ''} ${isDetached ? 'detached-active' : ''}`;
     cardEl.dataset.id = note.id;
+    cardEl.setAttribute('draggable', 'true');
 
     if (isPopped) {
       cardEl.style.left = `${note.spreadX}px`;
@@ -712,12 +1022,19 @@ function renderSpreadView() {
     const dateStr = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
 
     cardEl.innerHTML = `
-      <!-- Draggable Card Header (Grab to pop out anywhere) -->
-      <div class="spread-card-header" title="Drag header to move card anywhere on canvas">
-        <span class="drag-grip-icon" title="Drag to move card">⠿</span>
+      <!-- Draggable Card Header (Grab to move or drag onto sidebar collection) -->
+      <div class="spread-card-header" title="Drag to move card or drag to sidebar collections">
+        <span class="drag-grip-icon" title="Drag card into a collection or onto canvas">⠿</span>
         <input type="text" class="spread-card-title-input" value="${escapeHtml(note.title || 'Untitled Note')}" placeholder="Note Title..." />
         
         <div class="spread-card-actions">
+          <!-- Pop Out as Separate Window / Dock Back Button -->
+          ${isDetached ? `
+            <button class="vec-btn btn-dock-inline" title="Dock back into collection window">${SVGS.dock}</button>
+          ` : `
+            <button class="vec-btn btn-popout-card" title="Pop out as separate desktop sticky note">${SVGS.popout}</button>
+          `}
+
           <!-- Multi-select checkbox -->
           <input type="checkbox" class="spread-select-checkbox" title="Select for bulk actions" ${isSelected ? 'checked' : ''} />
 
@@ -762,7 +1079,10 @@ function renderSpreadView() {
 
       <!-- Card Footer -->
       <div class="spread-card-footer">
-        <span class="spread-card-cat-badge">${escapeHtml(note.category || 'General')}</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span class="spread-card-cat-badge">${escapeHtml(note.category || 'General')}</span>
+          ${isDetached ? `<span class="detached-status-badge"><span class="detached-dot"></span> Floating on Desktop</span>` : ''}
+        </div>
         <span>${dateStr}</span>
         <button class="btn-open-in-stack" title="Open as front card in stack view">
           <span>Stack</span>
@@ -780,6 +1100,8 @@ function renderSpreadView() {
     const paletteDropdown = cardEl.querySelector('.palette-dropdown');
     const btnTrash = cardEl.querySelector('.btn-trash-card');
     const btnOpenInStack = cardEl.querySelector('.btn-open-in-stack');
+    const btnPopout = cardEl.querySelector('.btn-popout-card');
+    const btnDockInline = cardEl.querySelector('.btn-dock-inline');
 
     // Bring card to front on mousedown
     cardEl.addEventListener('mousedown', () => {
@@ -896,9 +1218,41 @@ function renderSpreadView() {
       toggleSpread(false);
     });
 
-    // 8. POP-OUT FREE-DRAG INTERACTION
+    // 8. Pop Out / Dock Handlers
+    if (btnPopout) {
+      btnPopout.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await window.api.popOutNote(note.id, { screenX: e.screenX, screenY: e.screenY });
+        renderSpreadView();
+      });
+    }
+
+    if (btnDockInline) {
+      btnDockInline.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await window.api.dockNote(note.id);
+        renderSpreadView();
+      });
+    }
+
+    // 9. HTML5 Drag-and-Drop to Sidebar Collections
+    cardEl.addEventListener('dragstart', (e) => {
+      if (e.target.closest('.spread-card-body-editor') || e.target.closest('input')) {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.setData('text/plain', note.id);
+      e.dataTransfer.effectAllowed = 'move';
+      draggedNoteId = note.id;
+    });
+
+    cardEl.addEventListener('dragend', () => {
+      draggedNoteId = null;
+      document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('drop-target-active'));
+    });
+
+    // 10. Free-drag inside canvas or pull out towards desktop edge
     headerEl.addEventListener('mousedown', (e) => {
-      // Don't drag if user clicked input, button, or dropdown
       if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.palette-dropdown')) {
         return;
       }
@@ -914,7 +1268,6 @@ function renderSpreadView() {
       let currentLeft = cardRect.left - canvasRect.left + spreadCardsGrid.scrollLeft;
       let currentTop = cardRect.top - canvasRect.top + spreadCardsGrid.scrollTop;
 
-      // Pop out of normal flow immediately if not yet popped
       if (!cardEl.classList.contains('popped-out')) {
         cardEl.classList.add('popped-out');
         cardEl.style.left = `${currentLeft}px`;
@@ -939,12 +1292,20 @@ function renderSpreadView() {
         cardEl.style.top = `${newTop}px`;
       };
 
-      const onMouseUp = () => {
+      const onMouseUp = async (upEv) => {
         cardEl.classList.remove('is-dragging');
         window.removeEventListener('mousemove', onMouseMove);
         window.removeEventListener('mouseup', onMouseUp);
 
-        // Store final coordinates in note
+        // If dragged near or beyond window edge, pop out into desktop window
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
+        if (upEv.clientX > winWidth - 30 || upEv.clientX < 10 || upEv.clientY > winHeight - 30 || upEv.clientY < 10) {
+          await window.api.popOutNote(note.id, { screenX: upEv.screenX, screenY: upEv.screenY });
+          renderSpreadView();
+          return;
+        }
+
         const finalLeft = parseFloat(cardEl.style.left) || 10;
         const finalTop = parseFloat(cardEl.style.top) || 10;
         note.spreadX = Math.round(finalLeft);
@@ -1006,123 +1367,134 @@ if (btnSpreadNewNote) {
   });
 }
 
-// Event Listeners for Spread Mode Categories and Actions
-btnAddCategory.addEventListener('click', () => {
-  const existingInput = categoriesList.querySelector('.new-cat-inline-input');
-  if (existingInput) {
-    existingInput.focus();
-    return;
-  }
-  const inputEl = document.createElement('input');
-  inputEl.type = 'text';
-  inputEl.className = 'new-cat-inline-input';
-  inputEl.placeholder = 'Category name + Enter...';
-  categoriesList.prepend(inputEl);
-  inputEl.focus();
-
-  let committed = false;
-  const commit = () => {
-    if (committed) return;
-    committed = true;
-    const val = inputEl.value.trim();
-    if (val && !categories.includes(val)) {
-      categories.push(val);
-      activeCategory = val;
+// Add Category
+if (btnAddCategory) {
+  btnAddCategory.addEventListener('click', () => {
+    const existingInput = categoriesList.querySelector('.new-cat-inline-input');
+    if (existingInput) {
+      existingInput.focus();
+      return;
     }
-    renderSpreadView();
-  };
+    const inputEl = document.createElement('input');
+    inputEl.type = 'text';
+    inputEl.className = 'new-cat-inline-input';
+    inputEl.placeholder = 'Category name + Enter...';
+    categoriesList.prepend(inputEl);
+    inputEl.focus();
 
-  inputEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      commit();
-    } else if (e.key === 'Escape') {
+    let committed = false;
+    const commit = () => {
+      if (committed) return;
       committed = true;
+      const val = inputEl.value.trim();
+      if (val && !categories.includes(val)) {
+        categories.push(val);
+        activeCategory = val;
+      }
       renderSpreadView();
-    }
+    };
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        commit();
+      } else if (e.key === 'Escape') {
+        committed = true;
+        renderSpreadView();
+      }
+    });
+
+    inputEl.addEventListener('blur', () => {
+      commit();
+    });
   });
+}
 
-  inputEl.addEventListener('blur', () => {
-    commit();
-  });
-});
-
-btnSelectAll.addEventListener('click', () => {
-  const filtered = getFilteredNotes();
-  if (selectedNoteIds.size === filtered.length) {
-    selectedNoteIds.clear();
-  } else {
-    filtered.forEach(n => selectedNoteIds.add(n.id));
-  }
-  renderSpreadView();
-});
-
-sortSelect.addEventListener('change', () => {
-  currentSort = sortSelect.value;
-  renderSpreadView();
-});
-
-btnDeleteSelected.addEventListener('click', () => {
-  if (selectedNoteIds.size === 0) return;
-  isDeletingMultiple = true;
-  deletePopupTitle.textContent = `Delete ${selectedNoteIds.size} Notes?`;
-  deletePopupSubtitle.textContent = 'All selected notes will be permanently removed.';
-  deletePopup.classList.add('open');
-});
-
-btnCloseSpread.addEventListener('click', () => {
-  toggleSpread(false);
-});
-
-// 9. SCOPED DELETE POPUP CONFIRMATION
-btnCancelDelete.addEventListener('click', () => {
-  deletePopup.classList.remove('open');
-  noteToDeleteId = null;
-  isDeletingMultiple = false;
-});
-
-btnConfirmDelete.addEventListener('click', () => {
-  if (isDeletingMultiple) {
-    notes = notes.filter(n => !selectedNoteIds.has(n.id));
-    selectedNoteIds.clear();
-    if (notes.length === 0) {
-      addNewNote();
+if (btnSelectAll) {
+  btnSelectAll.addEventListener('click', () => {
+    const filtered = getFilteredNotes();
+    if (selectedNoteIds.size === filtered.length) {
+      selectedNoteIds.clear();
     } else {
-      activeNoteId = notes[0].id;
+      filtered.forEach(n => selectedNoteIds.add(n.id));
     }
     renderSpreadView();
-    triggerSave();
-  } else if (noteToDeleteId) {
-    if (notes.length <= 1) {
-      notes[0].title = 'New Note';
-      notes[0].content = '';
-    } else {
-      notes = notes.filter(n => n.id !== noteToDeleteId);
-      activeNoteId = notes.length > 0 ? notes[0].id : null;
-      if (activeNoteId) {
-        applyTheme(notes[0].theme || 'crystal');
+  });
+}
+
+if (btnDeleteSelected) {
+  btnDeleteSelected.addEventListener('click', () => {
+    if (selectedNoteIds.size === 0) return;
+    isDeletingMultiple = true;
+    deletePopupTitle.textContent = `Delete ${selectedNoteIds.size} Notes?`;
+    deletePopupSubtitle.textContent = 'All selected notes will be permanently removed.';
+    deletePopup.classList.add('open');
+  });
+}
+
+if (btnCloseSpread) {
+  btnCloseSpread.addEventListener('click', () => {
+    toggleSpread(false);
+  });
+}
+
+// --------------------------------------------------------------------------
+// 10. SCOPED DELETE POPUP CONFIRMATION
+// --------------------------------------------------------------------------
+if (btnCancelDelete) {
+  btnCancelDelete.addEventListener('click', () => {
+    deletePopup.classList.remove('open');
+    noteToDeleteId = null;
+    isDeletingMultiple = false;
+  });
+}
+
+if (btnConfirmDelete) {
+  btnConfirmDelete.addEventListener('click', () => {
+    if (isDeletingMultiple) {
+      notes = notes.filter(n => !selectedNoteIds.has(n.id));
+      selectedNoteIds.clear();
+      if (notes.length === 0) {
+        addNewNote();
+      } else {
+        activeNoteId = notes[0].id;
       }
-    }
-    if (isSpreadMode) {
       renderSpreadView();
-    } else {
-      renderDeck();
+      triggerSave();
+    } else if (noteToDeleteId) {
+      if (notes.length <= 1) {
+        notes[0].title = 'New Note';
+        notes[0].content = '';
+      } else {
+        notes = notes.filter(n => n.id !== noteToDeleteId);
+        activeNoteId = notes.length > 0 ? notes[0].id : null;
+        if (activeNoteId) {
+          applyTheme(notes[0].theme || 'crystal');
+        }
+      }
+      if (isSpreadMode) {
+        renderSpreadView();
+      } else {
+        renderDeck();
+      }
+      triggerSave();
     }
-    triggerSave();
-  }
-  deletePopup.classList.remove('open');
-  noteToDeleteId = null;
-  isDeletingMultiple = false;
-});
+    deletePopup.classList.remove('open');
+    noteToDeleteId = null;
+    isDeletingMultiple = false;
+  });
+}
 
 document.addEventListener('click', (e) => {
-  if (deletePopup.classList.contains('open') && !deletePopup.contains(e.target) && !e.target.closest('.btn-trash') && !e.target.closest('#btnDeleteSelected')) {
+  if (deletePopup && deletePopup.classList.contains('open') && !deletePopup.contains(e.target) && !e.target.closest('.btn-trash') && !e.target.closest('#btnDeleteSelected') && !e.target.closest('.btn-trash-card')) {
     deletePopup.classList.remove('open');
     noteToDeleteId = null;
     isDeletingMultiple = false;
   }
 });
 
-// 10. DYNAMIC AETHERCSS CONTROL CENTER
+// --------------------------------------------------------------------------
+// 11. DYNAMIC AETHERCSS CONTROL CENTER
+// --------------------------------------------------------------------------
 function openControlCenter() {
   window.api.setWindowMode('settings');
   settingsHost.classList.add('open');
@@ -1278,13 +1650,15 @@ function openControlCenter() {
   document.getElementById('btnCloseSettings').addEventListener('click', () => {
     localStorage.setItem('glass_user_settings', JSON.stringify(userSettings));
     settingsHost.classList.remove('open');
-    settingsHost.innerHTML = ''; // Memory and CPU freed immediately
+    settingsHost.innerHTML = '';
     window.api.setWindowMode(isSpreadMode ? 'spread' : 'stack');
     renderDeck();
   });
 }
 
-// 11. DEBOUNCED AUTO-SAVE TO JSON
+// --------------------------------------------------------------------------
+// 12. DEBOUNCED AUTO-SAVE TO JSON
+// --------------------------------------------------------------------------
 function triggerSave() {
   const dot = document.querySelector('.save-dot-status');
   if (dot) dot.classList.add('saving');
@@ -1312,5 +1686,5 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// Start
+// Start Application
 initApp();

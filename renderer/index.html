@@ -105,14 +105,6 @@
               <span>Grid Align</span>
             </button>
 
-            <!-- Sort dropdown -->
-            <div class="sort-wrap">
-              <select class="glass-select" id="sortSelect">
-                <option value="newest">🕒 Newest First</option>
-                <option value="oldest">🕒 Oldest First</option>
-                <option value="title">🔤 Title (A-Z)</option>
-              </select>
-            </div>
 
             <!-- Delete Selected Button -->
             <button class="spread-tool-btn danger" id="btnDeleteSelected" style="display: none;" title="Delete Selected Notes">
@@ -146,6 +138,9 @@
         </div>
       </div>
     </div>
+
+    <!-- Toast Notification for Drag & Drop into Categories -->
+    <div class="category-toast" id="categoryToast"></div>
 
     <!-- Dynamic Control Center (Mounted only when Settings is open, destroyed on close) -->
     <div class="settings-overlay-host" id="settingsHost"></div>

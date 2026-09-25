@@ -348,20 +348,104 @@ function applyNativePin(pinned) {
   }
 }
 
+const detachedWindows = new Map(); // noteId -> BrowserWindow
+
+function createDetachedWindow(noteId, coords) {
+  if (detachedWindows.has(noteId)) {
+    const existing = detachedWindows.get(noteId);
+    if (!existing.isDestroyed()) {
+      if (existing.isMinimized()) existing.restore();
+      existing.show();
+      existing.focus();
+      return existing;
+    }
+  }
+
+  const bounds = mainWindow && !mainWindow.isDestroyed() ? mainWindow.getBounds() : { x: 200, y: 150 };
+  let x = (coords && coords.screenX) ? Math.round(coords.screenX - 190) : bounds.x + 50;
+  let y = (coords && coords.screenY) ? Math.round(coords.screenY - 30) : bounds.y + 50;
+
+  const appIcon = fs.existsSync(ICON_PNG) ? nativeImage.createFromPath(ICON_PNG) : undefined;
+
+  const detachedWin = new BrowserWindow({
+    width: 380,
+    height: 480,
+    x: x,
+    y: y,
+    minWidth: 280,
+    minHeight: 280,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    hasShadow: false,
+    skipTaskbar: false,
+    alwaysOnTop: windowState.isPinned === true,
+    show: false,
+    icon: appIcon,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      spellcheck: false,
+      devTools: false
+    }
+  });
+
+  detachedWindows.set(noteId, detachedWin);
+
+  detachedWin.loadFile(path.join(__dirname, 'renderer', 'index.html'), {
+    query: { mode: 'standalone', noteId: noteId }
+  });
+
+  detachedWin.once('ready-to-show', () => {
+    detachedWin.show();
+    detachedWin.focus();
+    if (windowState.isPinned === true) {
+      detachedWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+      detachedWin.setAlwaysOnTop(true, 'screen-saver', 1);
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('note-popped-out', noteId);
+    }
+  });
+
+  detachedWin.on('closed', () => {
+    detachedWindows.delete(noteId);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('note-docked', noteId);
+    }
+  });
+
+  return detachedWin;
+}
+
+function closeDetachedWindow(noteId) {
+  if (detachedWindows.has(noteId)) {
+    const win = detachedWindows.get(noteId);
+    if (!win.isDestroyed()) {
+      win.close();
+    }
+    detachedWindows.delete(noteId);
+  }
+}
+
 // Pin functionality across all virtual desktops & remote sessions
 function setPinAcrossDesktops(pinned) {
   windowState.isPinned = pinned;
   saveWindowState();
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    if (pinned) {
-      mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-      mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
-    } else {
-      mainWindow.setVisibleOnAllWorkspaces(false);
-      mainWindow.setAlwaysOnTop(false);
+  const allWins = [mainWindow, ...Array.from(detachedWindows.values())];
+  allWins.forEach(win => {
+    if (win && !win.isDestroyed()) {
+      if (pinned) {
+        win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+        win.setAlwaysOnTop(true, 'screen-saver', 1);
+      } else {
+        win.setVisibleOnAllWorkspaces(false);
+        win.setAlwaysOnTop(false);
+      }
     }
-    applyNativePin(pinned);
-  }
+  });
+  applyNativePin(pinned);
   updateTrayMenu();
 }
 
@@ -378,6 +462,15 @@ function registerIpc() {
   ipcMain.handle('save-all-notes', (event, updatedNotes) => {
     notesData = updatedNotes;
     queueSaveNotes();
+    // Broadcast updated notes to all windows
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents !== event.sender) {
+      mainWindow.webContents.send('notes-synced', notesData);
+    }
+    detachedWindows.forEach((win) => {
+      if (!win.isDestroyed() && win.webContents !== event.sender) {
+        win.webContents.send('notes-synced', notesData);
+      }
+    });
     return { success: true };
   });
 
@@ -400,16 +493,34 @@ function registerIpc() {
     return windowState.isPinned;
   });
 
-  ipcMain.handle('minimize-window', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.minimize();
+  ipcMain.handle('minimize-window', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      win.minimize();
     }
   });
 
-  ipcMain.handle('close-window', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
+  ipcMain.handle('close-window', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win === mainWindow) {
       mainWindow.hide();
+    } else if (win) {
+      win.close();
     }
+  });
+
+  ipcMain.handle('pop-out-note', (event, noteId, coords) => {
+    createDetachedWindow(noteId, coords);
+    return { success: true };
+  });
+
+  ipcMain.handle('dock-note', (event, noteId) => {
+    closeDetachedWindow(noteId);
+    return { success: true };
+  });
+
+  ipcMain.handle('get-detached-notes', () => {
+    return Array.from(detachedWindows.keys());
   });
 
   ipcMain.handle('open-folder', () => {

@@ -8,8 +8,10 @@ src/logs/
 debug_log.txt
 run_out.txt
 
-# Local User Window Coordinates
+# Local User Window Coordinates & Note Data
 window_state.json
+sticky_notes.json
+*.local.json
 
 # OS files
 .DS_Store

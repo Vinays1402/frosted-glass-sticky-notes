@@ -1,0 +1,11 @@
+[
+  {
+    "id": "note-welcome",
+    "title": "Liquid Glass Note",
+    "content": "<div>Welcome to your <b>liquid glass polymorphic</b> notes!</div><br><div>• <b>Rich Text Formatting</b>: Use <b>Ctrl+B</b> for bold, <u>Ctrl+U</u> for underline.</div><div>• <b>Cross-Desktop Pin</b>: Stays pinned across all virtual desktops.</div><div>• <b>Flipped Stack</b>: Hover over cards to fan headings upwards, click any to pop to front!</div>",
+    "theme": "crystal",
+    "category": "General",
+    "createdAt": "2026-09-24T12:00:00.000Z",
+    "updatedAt": "2026-09-24T12:00:00.000Z"
+  }
+]

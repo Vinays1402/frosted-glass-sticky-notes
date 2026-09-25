@@ -114,22 +114,30 @@ html, body {
   height: var(--card-height);
   border-radius: var(--glass-radius);
   isolation: isolate;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 25%, rgba(15, 23, 42, var(--glass-opacity)) 75%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  border-left: 1.2px solid rgba(255, 255, 255, 0.35);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(155deg, rgba(16, 24, 40, 0.96) 0%, rgba(12, 18, 32, 0.97) 55%, rgba(8, 14, 24, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-left: 1.2px solid rgba(255, 255, 255, 0.32);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 
-    0 24px 50px -12px rgba(0, 0, 0, 0.75),
-    0 0 28px -4px var(--card-glow),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45);
+    0 10px 24px -4px rgba(0, 0, 0, 0.22),
+    0 2px 6px -1px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.45);
   cursor: default;
   transition: 
-    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.3s ease,
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.25s ease,
     border-radius 0.2s ease;
   will-change: transform, opacity;
+  overflow: hidden;
+}
+
+/* Background stacked cards have minimal shadow to prevent compound shadow bleed on white backgrounds */
+.liquid-glass-card:not(.depth-0) {
+  box-shadow: 
+    0 4px 12px -2px rgba(0, 0, 0, 0.14),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 /* Smooth glide-in animation when new note is added */
@@ -164,17 +172,15 @@ html, body {
   pointer-events: none;
 }
 
-/* Backdrop blur & liquid distortion layer */
+/* Backdrop blur layer (crisp acrylic without color bleeding) */
 .liquid-glass-card::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
   border-radius: var(--glass-radius);
-  backdrop-filter: blur(var(--glass-blur)) saturate(180%) contrast(105%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%) contrast(105%);
-  filter: url(#glass-distortion);
-  -webkit-filter: url(#glass-distortion);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
   isolation: isolate;
   pointer-events: none;
 }
@@ -604,25 +610,25 @@ html, body {
 /* FLIPPED HOVER FANNING: Cards fan UPWARDS exposing all headings */
 .cards-stage:hover .liquid-glass-card.depth-1 {
   transform: translate3d(0, 32px, -6px) scale(0.985);
-  opacity: 0.95;
-  filter: brightness(1.1);
-  box-shadow: 0 0 24px var(--gem-accent);
+  opacity: 0.96;
+  filter: brightness(1.08);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .cards-stage:hover .liquid-glass-card.depth-2 {
   transform: translate3d(0, -16px, -14px) scale(0.965);
-  opacity: 0.88;
-  filter: brightness(1.08);
+  opacity: 0.90;
+  filter: brightness(1.05);
 }
 
 .cards-stage:hover .liquid-glass-card.depth-3 {
   transform: translate3d(0, -62px, -22px) scale(0.945);
-  opacity: 0.76;
+  opacity: 0.80;
 }
 
 .liquid-glass-card:not(.depth-0):hover {
-  filter: brightness(1.2) !important;
-  box-shadow: 0 0 32px var(--gem-accent) !important;
+  filter: brightness(1.15) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
 }
 
 /* ==========================================================================
@@ -1057,14 +1063,14 @@ html, body {
 .spread-usable-card {
   width: 300px;
   height: 330px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 30%, rgba(15, 23, 42, 0.88) 85%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-top: 1.5px solid rgba(255, 255, 255, 0.52);
-  border-left: 1.2px solid rgba(255, 255, 255, 0.35);
+  background: linear-gradient(155deg, rgba(20, 28, 46, 0.94) 0%, rgba(15, 23, 40, 0.96) 55%, rgba(10, 16, 30, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-left: 1.2px solid rgba(255, 255, 255, 0.32);
   border-radius: 20px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1075,13 +1081,13 @@ html, body {
 }
 
 .spread-usable-card:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 22px var(--card-glow);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
 }
 
 .spread-usable-card.selected {
   border-color: var(--gem-accent) !important;
-  box-shadow: 0 0 0 2px var(--gem-accent), 0 16px 36px rgba(0, 0, 0, 0.65) !important;
+  box-shadow: 0 0 0 2px var(--gem-accent), 0 16px 36px rgba(0, 0, 0, 0.45) !important;
 }
 
 /* Popped-out free-floating card */
@@ -1090,12 +1096,106 @@ html, body {
 }
 
 .spread-usable-card.is-dragging {
-  opacity: 0.94;
-  transform: scale(1.03) rotate(0.6deg);
-  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.75), 0 0 35px var(--gem-accent) !important;
+  opacity: 0.96;
+  transform: scale(1.02);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6) !important;
   z-index: 999 !important;
   transition: none !important;
   cursor: grabbing !important;
+}
+
+/* Popped-out on desktop indicator badge */
+.spread-usable-card.detached-active {
+  border-color: var(--gem-accent);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+}
+
+.detached-status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gem-accent);
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 12px;
+  padding: 2px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detached-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gem-accent);
+  box-shadow: 0 0 6px var(--gem-accent);
+}
+
+/* Category Drag and Drop target highlight */
+.category-pill.drop-target-active {
+  background: rgba(56, 189, 248, 0.32) !important;
+  border: 1.5px dashed var(--gem-accent) !important;
+  color: #fff !important;
+  transform: scale(1.05);
+  box-shadow: 0 0 14px var(--gem-accent);
+}
+
+/* Category Toast */
+.category-toast {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--gem-accent);
+  border-radius: 20px;
+  padding: 8px 18px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 500;
+}
+
+.category-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Standalone Detached Card Window */
+body.mode-standalone {
+  padding: 12px;
+  overflow: hidden;
+}
+
+body.mode-standalone .glass-roller-control,
+body.mode-standalone .spread-layout-container,
+body.mode-standalone .scoped-delete-popup,
+body.mode-standalone .settings-overlay-host {
+  display: none !important;
+}
+
+body.mode-standalone .cards-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+body.mode-standalone .liquid-glass-card {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+  opacity: 1 !important;
 }
 
 /* Card Header */
