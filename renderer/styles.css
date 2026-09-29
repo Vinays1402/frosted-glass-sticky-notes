@@ -113,25 +113,23 @@ html, body {
   width: var(--card-width);
   height: var(--card-height);
   border-radius: var(--glass-radius);
-  isolation: isolate;
   background: linear-gradient(
-    155deg, 
-    rgba(255, 255, 255, 0.16) 0%, 
-    rgba(24, 38, 62, calc(var(--glass-opacity) * 0.72)) 28%, 
-    rgba(14, 24, 42, calc(var(--glass-opacity) * 0.82)) 65%, 
-    rgba(8, 15, 28, calc(var(--glass-opacity) * 0.90)) 100%
+    135deg, 
+    rgba(255, 255, 255, 0.24) 0%, 
+    rgba(255, 255, 255, 0.08) 20%, 
+    rgba(18, 30, 52, 0.42) 55%, 
+    rgba(10, 18, 34, 0.58) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  border-left: 1.2px solid rgba(255, 255, 255, 0.35);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.65);
+  border-left: 1.2px solid rgba(255, 255, 255, 0.42);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 
-    0 10px 24px -4px rgba(0, 0, 0, 0.22),
+    0 12px 28px -4px rgba(0, 0, 0, 0.28),
     0 2px 6px -1px rgba(0, 0, 0, 0.12),
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.45);
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 16px -2px rgba(255, 255, 255, 0.25);
   cursor: default;
   transition: 
     transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
@@ -180,16 +178,13 @@ html, body {
   pointer-events: none;
 }
 
-/* Backdrop blur layer (crisp acrylic without color bleeding) */
+/* Specular light highlight */
 .liquid-glass-card::after {
   content: '';
   position: absolute;
   inset: 0;
-  z-index: -1;
   border-radius: var(--glass-radius);
-  backdrop-filter: blur(36px) saturate(180%);
-  -webkit-backdrop-filter: blur(36px) saturate(180%);
-  isolation: isolate;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.12), transparent 70%);
   pointer-events: none;
 }
 
@@ -1072,19 +1067,17 @@ html, body {
   width: 300px;
   height: 330px;
   background: linear-gradient(
-    155deg, 
-    rgba(255, 255, 255, 0.16) 0%, 
-    rgba(24, 38, 62, calc(var(--glass-opacity) * 0.72)) 28%, 
-    rgba(14, 24, 42, calc(var(--glass-opacity) * 0.82)) 65%, 
-    rgba(8, 15, 28, calc(var(--glass-opacity) * 0.90)) 100%
+    135deg, 
+    rgba(255, 255, 255, 0.24) 0%, 
+    rgba(255, 255, 255, 0.08) 20%, 
+    rgba(18, 30, 52, 0.42) 55%, 
+    rgba(10, 18, 34, 0.58) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-top: 1.5px solid rgba(255, 255, 255, 0.55);
-  border-left: 1.2px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.65);
+  border-left: 1.2px solid rgba(255, 255, 255, 0.42);
   border-radius: 20px;
-  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32), inset 0 1px 1.5px rgba(255, 255, 255, 0.55);
   display: flex;
   flex-direction: column;
   overflow: hidden;
