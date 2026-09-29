@@ -7,9 +7,4 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 strDir = fso.GetParentFolderName(WScript.ScriptFullName)
 WshShell.CurrentDirectory = strDir
 
-strExe = strDir & "\node_modules\electron\dist\electron.exe"
-If fso.FileExists(strExe) Then
-    WshShell.Run """" & strExe & """ .", 0, False
-Else
-    WshShell.Run "node """ & strDir & "\node_modules\electron\cli.js"" .", 0, False
-End If
+WshShell.Run "cmd /c npm start", 0, False

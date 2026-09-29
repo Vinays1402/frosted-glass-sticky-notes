@@ -131,12 +131,7 @@ function setStartupStatus(enable) {
         'Set fso = CreateObject("Scripting.FileSystemObject")',
         `strDir = "${__dirname.replace(/\\/g, '\\\\')}"`,
         'WshShell.CurrentDirectory = strDir',
-        'strExe = strDir & "\\node_modules\\electron\\dist\\electron.exe"',
-        'If fso.FileExists(strExe) Then',
-        '    WshShell.Run """" & strExe & """ """ & strDir & """", 0, False',
-        'Else',
-        '    WshShell.Run "node """ & strDir & "\\node_modules\\electron\\cli.js"" """ & strDir & """", 0, False',
-        'End If'
+        'WshShell.Run """" & strDir & "\\Launch Sticky Notes.bat""", 0, False'
       ].join('\r\n');
       fs.writeFileSync(STARTUP_SCRIPT, vbsContent, 'utf-8');
     } else {
