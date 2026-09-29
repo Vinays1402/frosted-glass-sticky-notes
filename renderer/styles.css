@@ -114,12 +114,20 @@ html, body {
   height: var(--card-height);
   border-radius: var(--glass-radius);
   isolation: isolate;
-  background: linear-gradient(155deg, rgba(16, 24, 40, 0.96) 0%, rgba(12, 18, 32, 0.97) 55%, rgba(8, 14, 24, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-top: 1.5px solid rgba(255, 255, 255, 0.5);
-  border-left: 1.2px solid rgba(255, 255, 255, 0.32);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    155deg, 
+    rgba(255, 255, 255, 0.16) 0%, 
+    rgba(24, 38, 62, calc(var(--glass-opacity) * 0.72)) 28%, 
+    rgba(14, 24, 42, calc(var(--glass-opacity) * 0.82)) 65%, 
+    rgba(8, 15, 28, calc(var(--glass-opacity) * 0.90)) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.55);
+  border-left: 1.2px solid rgba(255, 255, 255, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   box-shadow: 
     0 10px 24px -4px rgba(0, 0, 0, 0.22),
     0 2px 6px -1px rgba(0, 0, 0, 0.12),
@@ -1063,13 +1071,19 @@ html, body {
 .spread-usable-card {
   width: 300px;
   height: 330px;
-  background: linear-gradient(155deg, rgba(20, 28, 46, 0.94) 0%, rgba(15, 23, 40, 0.96) 55%, rgba(10, 16, 30, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-top: 1.5px solid rgba(255, 255, 255, 0.5);
-  border-left: 1.2px solid rgba(255, 255, 255, 0.32);
+  background: linear-gradient(
+    155deg, 
+    rgba(255, 255, 255, 0.16) 0%, 
+    rgba(24, 38, 62, calc(var(--glass-opacity) * 0.72)) 28%, 
+    rgba(14, 24, 42, calc(var(--glass-opacity) * 0.82)) 65%, 
+    rgba(8, 15, 28, calc(var(--glass-opacity) * 0.90)) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.55);
+  border-left: 1.2px solid rgba(255, 255, 255, 0.35);
   border-radius: 20px;
-  backdrop-filter: blur(36px) saturate(180%);
-  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
   display: flex;
   flex-direction: column;
